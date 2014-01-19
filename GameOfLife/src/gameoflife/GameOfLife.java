@@ -7,7 +7,6 @@
 package gameoflife;
 
 import java.awt.event.ActionEvent;
-import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JFrame;
@@ -19,9 +18,9 @@ import javax.swing.KeyStroke;
  */
 public class GameOfLife extends JFrame {
     Grid grid;
-    List<Cell> cells;
+    Cell[][] cells;
     private final int GRID_MIN_SIZE = 3;
-    private final int GRID_MAX_SIZE = 10;
+    private final int GRID_MAX_SIZE = 20;
     private int GRID_SIZE = GRID_MIN_SIZE;
     private int GENERATION = 0;
     
@@ -41,75 +40,10 @@ public class GameOfLife extends JFrame {
         setResizable(false);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         
+        // initialize the grid to 3x3 in the beginning
         initGrid(GRID_MIN_SIZE);
         
-        Action grow = new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(GRID_SIZE < GRID_MAX_SIZE) {
-                    remove(grid);
-                    
-                    initGrid(++GRID_SIZE);
-                    validate();
-                    repaint();
-                }
-            }
-        };
-        
-        Action shrink = new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(GRID_SIZE > GRID_MIN_SIZE) {
-                    remove(grid);
-
-                    initGrid(--GRID_SIZE);
-                    validate();
-                    repaint();
-                }
-            }
-        };
-        
-        Action go = new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("generation " + (++GENERATION));
-                
-                for(int i=0; i<cells.size(); i++) {
-                    // reproduction
-                    if(cells.get(i).alive == false) {
-                        for(int j=1; j<5; j++) {
-                            if(i-j > 0 && cells.get(i-j) != null && cells.get(i-j).alive) {
-                                cells.get(i).neighboursAlive++;
-                                if(i == 3)
-                                    System.out.println("neighbous " + (i-j) + "was alive");
-                            }
-                        }
-                        for(int j=1; j<5; j++) {
-                            if(i+j < cells.size() && cells.get(i+j) != null && cells.get(i+j).alive) {
-                                cells.get(i).neighboursAlive++;
-                                if(i == 3)
-                                    System.out.println("neighbous " + (i+j) + "was alive");
-                            }
-                        }
-                        
-                        if(cells.get(i).neighboursAlive == 3)
-                            cells.get(i).willBeAlive = true;
-                        else
-                            cells.get(i).willBeAlive = false;
-                    }
-                }
-                
-                // generation over, do the thing
-                for(Cell cell : cells) {
-                    if(cell.willBeAlive)
-                        cell.live();
-                    else
-                        cell.die();
-                }
-            }
-        };
-        
-        
+        // set actions to keys
         getRootPane().getInputMap().put(KeyStroke.getKeyStroke("UP"), "grow");
         getRootPane().getActionMap().put("grow", grow);
         
@@ -122,4 +56,82 @@ public class GameOfLife extends JFrame {
         setVisible(true);
     }
     
+    /**
+     * Grow the grid by one.
+     */
+    Action grow = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if(GRID_SIZE < GRID_MAX_SIZE) {
+                remove(grid);
+
+                initGrid(++GRID_SIZE);
+                validate();
+                repaint();
+            }
+        }
+    };
+    
+    /**
+     * Shrink the grid by one.
+     */
+    Action shrink = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if(GRID_SIZE > GRID_MIN_SIZE) {
+                remove(grid);
+
+                initGrid(--GRID_SIZE);
+                validate();
+                repaint();
+            }
+        }
+    };
+    
+    /**
+     * Step one generation forward.
+     */
+    Action go = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            System.out.println("generation " + (++GENERATION));
+
+            // calculate next generation
+            for(int y=0; y<GRID_SIZE; y++) {
+                for(int x=0; x<GRID_SIZE; x++) {
+                    Cell currCell = cells[x][y];
+                    int n = currCell.neighboursAlive;
+                    
+                    // living cells
+                    if(currCell.alive) {
+                        if(n < 2 || n > 3)
+                            currCell.willBeAlive = false;
+                        else
+                            currCell.willBeAlive = true;
+                    }
+                    // dead cells
+                    else {
+                        if(currCell.neighboursAlive == 3)
+                            currCell.willBeAlive = true;
+                    }
+                }
+            }
+
+            // generation over, show results
+            for(int i=0; i<GRID_SIZE; i++) {
+                for(int j=0; j<GRID_SIZE; j++) {
+                    Cell currCell = cells[i][j];
+                    
+                    if(!currCell.alive && currCell.willBeAlive) {
+                        currCell.live();
+                        grid.recountNeighbours(currCell, true);
+                    }
+                    else if(currCell.alive && !currCell.willBeAlive) {
+                        currCell.die();
+                        grid.recountNeighbours(currCell, false);
+                    }
+                }
+            }
+        }
+    };
 }

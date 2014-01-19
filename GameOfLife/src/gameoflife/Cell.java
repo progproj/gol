@@ -36,10 +36,12 @@ public class Cell extends JPanel {
     public void live() {
         setBackground(Color.blue);
         alive = true;
+        willBeAlive = false;
     }
     
     public void die() {
         setBackground(new Color(105, 120, 105));
         alive = false;
+        willBeAlive = false;
     }
 }

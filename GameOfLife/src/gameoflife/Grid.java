@@ -9,8 +9,6 @@ package gameoflife;
 import java.awt.GridLayout;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.JPanel;
 
 /**
@@ -18,32 +16,34 @@ import javax.swing.JPanel;
  * @author darth
  */
 public class Grid extends JPanel {
-    private List<Cell> cells;
+    private Cell[][] cells;
+    private final int GRID_SIZE;
     
-    public List<Cell> getCells() {
+    public Cell[][] getCells() {
         return cells;
     }
 
     public Grid(int GRID_SIZE) {
-        cells = new ArrayList<>(GRID_SIZE * GRID_SIZE);
+        this.GRID_SIZE = GRID_SIZE;
+        cells = new Cell[GRID_SIZE][GRID_SIZE];
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
 
-        for (int x = 0; x < GRID_SIZE; x++) {
-            for (int y = 0; y < GRID_SIZE; y++) {
+        for (int y = 0; y < GRID_SIZE; y++) {
+            for (int x = 0; x < GRID_SIZE; x++) {
                 final Cell cell = new Cell(x, y);
-                cells.add(cell);
+                cells[x][y] = cell;
                 add(cell);
                 
                 cell.addMouseListener(new MouseListener() {
                     @Override
                     public void mousePressed(MouseEvent e) {
                         if(e.getButton() == MouseEvent.BUTTON1) {
-                            cell.willBeAlive = true;
                             cell.live();
+                            recountNeighbours(cell, true);
                         }
                         else if(e.getButton() == MouseEvent.BUTTON3) {
-                            cell.willBeAlive = false;
                             cell.die();
+                            recountNeighbours(cell, false);
                         }
                     }
 
@@ -63,6 +63,26 @@ public class Grid extends JPanel {
                     public void mouseClicked(MouseEvent me) {
                     }
                 });
+            }
+        }
+    }
+    
+    public void recountNeighbours(Cell cell, boolean alive) {
+        int row;
+        int col;
+        
+        for(int y=-1; y<2; y++) {
+            row = cell.y + y;
+            for(int x=-1; x<2; x++) {
+                col = cell.x + x;
+                
+                if(row < 0 ||  row >= GRID_SIZE || col < 0 || col >= GRID_SIZE || cells[col][row] == cell)
+                    continue;
+                
+                if(alive)
+                    cells[col][row].neighboursAlive++;
+                else
+                    cells[col][row].neighboursAlive--;
             }
         }
     }
