@@ -38,12 +38,16 @@ public class Grid extends JPanel {
                     @Override
                     public void mousePressed(MouseEvent e) {
                         if(e.getButton() == MouseEvent.BUTTON1) {
-                            cell.live();
-                            recountNeighbours(cell, true);
+                            if(!cell.alive) {
+                                cell.live();
+                                recountNeighbours(cell, true);
+                            }
                         }
                         else if(e.getButton() == MouseEvent.BUTTON3) {
-                            cell.die();
-                            recountNeighbours(cell, false);
+                            if(cell.alive) {
+                                cell.die();
+                                recountNeighbours(cell, false);
+                            }
                         }
                     }
 
@@ -85,6 +89,10 @@ public class Grid extends JPanel {
                     cells[col][row].neighboursAlive--;
             }
         }
+        
+        for(int i=0; i<GRID_SIZE; i++)
+            for(int j=0; j<GRID_SIZE; j++)
+                cells[i][j].setText(Short.toString(cells[i][j].neighboursAlive));
     }
     
 }

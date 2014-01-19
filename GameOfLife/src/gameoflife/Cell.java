@@ -9,13 +9,14 @@ package gameoflife;
 import java.awt.Color;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
  *
  * @author darth
  */
-public class Cell extends JPanel {
+public class Cell extends JLabel {
     public static final int CELL_SIZE = 1;
     public final int x;
     public final int y;
@@ -28,6 +29,9 @@ public class Cell extends JPanel {
         setBorder(BorderFactory.createBevelBorder(CELL_SIZE));
         setBackground(new Color(105, 120, 105));
         setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
+        
+        setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        setText(Short.toString(neighboursAlive));
         
         this.x = x;
         this.y = y;

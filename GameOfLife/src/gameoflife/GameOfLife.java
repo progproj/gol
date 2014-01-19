@@ -44,6 +44,9 @@ public class GameOfLife extends JFrame {
         initGrid(GRID_MIN_SIZE);
         
         // set actions to keys
+        getRootPane().getInputMap().put(KeyStroke.getKeyStroke('r'), "reset");
+        getRootPane().getActionMap().put("reset", reset);
+        
         getRootPane().getInputMap().put(KeyStroke.getKeyStroke("UP"), "grow");
         getRootPane().getActionMap().put("grow", grow);
         
@@ -52,22 +55,32 @@ public class GameOfLife extends JFrame {
         
         getRootPane().getInputMap().put(KeyStroke.getKeyStroke("RIGHT"), "go");
         getRootPane().getActionMap().put("go", go);
+        
+        getRootPane().getInputMap().put(KeyStroke.getKeyStroke("LEFT"), "back");
+        getRootPane().getActionMap().put("back", back);
                 
         setVisible(true);
     }
+    
+    /**
+     * Reset game with same grid size.
+     */
+    Action reset = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            resetGame();
+        }
+    };
     
     /**
      * Grow the grid by one.
      */
     Action grow = new AbstractAction() {
         @Override
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(ActionEvent e) {            
             if(GRID_SIZE < GRID_MAX_SIZE) {
-                remove(grid);
-
-                initGrid(++GRID_SIZE);
-                validate();
-                repaint();
+                GRID_SIZE++;
+                resetGame();
             }
         }
     };
@@ -79,11 +92,8 @@ public class GameOfLife extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             if(GRID_SIZE > GRID_MIN_SIZE) {
-                remove(grid);
-
-                initGrid(--GRID_SIZE);
-                validate();
-                repaint();
+                GRID_SIZE--;
+                resetGame();
             }
         }
     };
@@ -129,9 +139,32 @@ public class GameOfLife extends JFrame {
                     else if(currCell.alive && !currCell.willBeAlive) {
                         currCell.die();
                         grid.recountNeighbours(currCell, false);
-                    }
+                    }                    
                 }
             }
         }
     };
+    
+    /**
+     * Step one generation back.
+     */
+    Action back = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            //if(GENERATION > 0)
+              //  System.out.println("generation " + (--GENERATION));
+        }
+    };
+    
+    private void resetGame() {
+        //reset generation count
+        GENERATION = 0;
+
+        remove(grid);
+
+        initGrid(GRID_SIZE);
+        validate();
+        repaint();
+        System.out.println("New game with grid " + GRID_SIZE + "x" + GRID_SIZE);
+    }
 }
