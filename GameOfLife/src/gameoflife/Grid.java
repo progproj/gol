@@ -16,22 +16,28 @@ import javax.swing.JPanel;
  * @author darth
  */
 public class Grid extends JPanel {
-    private Cell[][] cells;
+    private Cell[][] cells, check;
     private final int GRID_SIZE;
     
     public Cell[][] getCells() {
         return cells;
     }
+    
+    public Cell[][] getCheck() {
+        return check;
+    }
 
     public Grid(int GRID_SIZE) {
         this.GRID_SIZE = GRID_SIZE;
         cells = new Cell[GRID_SIZE][GRID_SIZE];
+        check = new Cell[GRID_SIZE][GRID_SIZE];
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
 
         for (int y = 0; y < GRID_SIZE; y++) {
             for (int x = 0; x < GRID_SIZE; x++) {
                 final Cell cell = new Cell(x, y);
                 cells[x][y] = cell;
+                check[x][y] = new Cell(x, y);
                 add(cell);
                 
                 cell.addMouseListener(new MouseListener() {
@@ -40,13 +46,13 @@ public class Grid extends JPanel {
                         if(e.getButton() == MouseEvent.BUTTON1) {
                             if(!cell.alive) {
                                 cell.live();
-                                recountNeighbours(cell, true);
+                                recountNeighbours(cells, cell, true);
                             }
                         }
                         else if(e.getButton() == MouseEvent.BUTTON3) {
                             if(cell.alive) {
                                 cell.die();
-                                recountNeighbours(cell, false);
+                                recountNeighbours(cells, cell, false);
                             }
                         }
                     }
@@ -71,7 +77,7 @@ public class Grid extends JPanel {
         }
     }
     
-    public void recountNeighbours(Cell cell, boolean alive) {
+    public void recountNeighbours(Cell[][] array, Cell cell, boolean alive) {
         int row;
         int col;
         
@@ -80,19 +86,29 @@ public class Grid extends JPanel {
             for(int x=-1; x<2; x++) {
                 col = cell.x + x;
                 
-                if(row < 0 ||  row >= GRID_SIZE || col < 0 || col >= GRID_SIZE || cells[col][row] == cell)
+                if(row < 0 ||  row >= GRID_SIZE || col < 0 || col >= GRID_SIZE || array[col][row] == cell)
                     continue;
                 
                 if(alive)
-                    cells[col][row].neighboursAlive++;
+                    array[col][row].neighboursAlive++;
                 else
-                    cells[col][row].neighboursAlive--;
+                    if(array[col][row].neighboursAlive > 0)
+                        array[col][row].neighboursAlive--;
             }
         }
         
         for(int i=0; i<GRID_SIZE; i++)
             for(int j=0; j<GRID_SIZE; j++)
-                cells[i][j].setText(Short.toString(cells[i][j].neighboursAlive));
+                array[i][j].setText(Short.toString(array[i][j].neighboursAlive));
+    }
+    
+    public boolean isEmpty() {
+        for (int y = 0; y < GRID_SIZE; y++)
+            for (int x = 0; x < GRID_SIZE; x++)
+                if(cells[x][y].alive)
+                    return false;
+        
+        return true;
     }
     
 }

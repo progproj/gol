@@ -18,7 +18,7 @@ import javax.swing.KeyStroke;
  */
 public class GameOfLife extends JFrame {
     Grid grid;
-    Cell[][] cells;
+    Cell[][] cells, check;
     private final int GRID_MIN_SIZE = 3;
     private final int GRID_MAX_SIZE = 20;
     private int GRID_SIZE = GRID_MIN_SIZE;
@@ -32,6 +32,7 @@ public class GameOfLife extends JFrame {
         grid = new Grid(size);
         add(grid);
         cells = grid.getCells();
+        check = grid.getCheck();
     }
     
     public GameOfLife() {
@@ -105,43 +106,7 @@ public class GameOfLife extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("generation " + (++GENERATION));
-
-            // calculate next generation
-            for(int y=0; y<GRID_SIZE; y++) {
-                for(int x=0; x<GRID_SIZE; x++) {
-                    Cell currCell = cells[x][y];
-                    int n = currCell.neighboursAlive;
-                    
-                    // living cells
-                    if(currCell.alive) {
-                        if(n < 2 || n > 3)
-                            currCell.willBeAlive = false;
-                        else
-                            currCell.willBeAlive = true;
-                    }
-                    // dead cells
-                    else {
-                        if(currCell.neighboursAlive == 3)
-                            currCell.willBeAlive = true;
-                    }
-                }
-            }
-
-            // generation over, show results
-            for(int i=0; i<GRID_SIZE; i++) {
-                for(int j=0; j<GRID_SIZE; j++) {
-                    Cell currCell = cells[i][j];
-                    
-                    if(!currCell.alive && currCell.willBeAlive) {
-                        currCell.live();
-                        grid.recountNeighbours(currCell, true);
-                    }
-                    else if(currCell.alive && !currCell.willBeAlive) {
-                        currCell.die();
-                        grid.recountNeighbours(currCell, false);
-                    }                    
-                }
-            }
+            step(cells);
         }
     };
     
@@ -151,8 +116,29 @@ public class GameOfLife extends JFrame {
     Action back = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            //if(GENERATION > 0)
-              //  System.out.println("generation " + (--GENERATION));
+            // no way back from empty grid
+            if(grid.isEmpty()) {
+                System.out.println("Grid is empty! Returning!");
+                return;
+            }
+                
+            
+            resetArray();
+            check[1][0].live();
+            grid.recountNeighbours(check, check[1][0], true);
+            check[2][0].live();
+            grid.recountNeighbours(check, check[2][0], true);
+            check[2][1].live();
+            grid.recountNeighbours(check, check[2][1], true);
+            step(check);
+            
+            if(match()) {
+                System.out.println("equal");
+                
+                // TODO: make previous step appear on the grid!
+            }
+            else
+                System.out.println("not equal");
         }
     };
     
@@ -166,5 +152,62 @@ public class GameOfLife extends JFrame {
         validate();
         repaint();
         System.out.println("New game with grid " + GRID_SIZE + "x" + GRID_SIZE);
+    }
+    
+    private boolean match() {
+        for(int i=0; i<GRID_SIZE; i++)
+            for(int j=0; j<GRID_SIZE; j++)
+                if(cells[i][j].alive != check[i][j].alive)
+                    return false;
+        
+        return true;
+    }
+    
+    private void resetArray() {
+        for (int y = 0; y < GRID_SIZE; y++) {
+            for (int x = 0; x < GRID_SIZE; x++) {
+                check[x][y].die();
+                grid.recountNeighbours(check, check[x][y], false);
+            }
+        }
+    }
+    
+    private void step(Cell[][] array) {
+        // calculate next generation
+        for(int y=0; y<GRID_SIZE; y++) {
+            for(int x=0; x<GRID_SIZE; x++) {
+                Cell currCell = array[x][y];
+                int n = currCell.neighboursAlive;
+
+                // living cells
+                if(currCell.alive) {
+                    if(n < 2 || n > 3)
+                        currCell.willBeAlive = false;
+                    else
+                        currCell.willBeAlive = true;
+                }
+                // dead cells
+                else {
+                    if(n == 3)
+                        currCell.willBeAlive = true;
+                }
+            }
+        }
+
+        // generation over, show results
+        for(int i=0; i<GRID_SIZE; i++) {
+            for(int j=0; j<GRID_SIZE; j++) {
+                Cell currCell = array[i][j];
+
+                if(!currCell.alive && currCell.willBeAlive) {
+                    currCell.live();
+                    grid.recountNeighbours(array, currCell, true);
+                }
+                else if(currCell.alive && !currCell.willBeAlive) {
+                    currCell.die();
+                    grid.recountNeighbours(array, currCell, false);
+                }                    
+            }
+        }
     }
 }
