@@ -10,6 +10,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
 /**
@@ -106,7 +107,7 @@ public class GameOfLife extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("generation " + (++GENERATION));
-            step(cells);
+            stepForward(cells);
         }
     };
     
@@ -118,30 +119,62 @@ public class GameOfLife extends JFrame {
         public void actionPerformed(ActionEvent e) {
             // no way back from empty grid
             if(grid.isEmpty()) {
-                System.out.println("Grid is empty! Returning!");
+                errorMessage("Grid is empty! Returning!");
                 return;
             }
-                
             
-            resetArray();
-            check[1][0].live();
-            grid.recountNeighbours(check, check[1][0], true);
-            check[2][0].live();
-            grid.recountNeighbours(check, check[2][0], true);
-            check[2][1].live();
-            grid.recountNeighbours(check, check[2][1], true);
-            step(check);
-            
-            if(match()) {
-                System.out.println("equal");
-                
-                // TODO: make previous step appear on the grid!
-            }
-            else
-                System.out.println("not equal");
+            // take a step back
+            stepBack();
         }
     };
     
+    private void errorMessage(String msg) {
+        JOptionPane.showMessageDialog(grid,
+            msg,
+            "No luck",
+            JOptionPane.ERROR_MESSAGE);
+    }
+    
+    private void found(String binStr) {
+        System.out.println("equal");
+        System.out.println(binStr);
+        int m = 0;
+
+        // copy matching layout to main view
+        for (int y = 0; y < GRID_SIZE; y++) {
+            for (int x = 0; x < GRID_SIZE; x++) {
+                if(cells[x][y].alive != (binStr.charAt(m) == '1')) {
+                    if(binStr.charAt(m) == '1')
+                        cells[x][y].live();
+                    else
+                        cells[x][y].die();
+
+                    grid.recountNeighbours(cells, cells[x][y], cells[x][y].alive);
+                }
+                m++;
+            }
+        }
+    }
+    
+    /**
+     * Creates and returns a fixed sized binary string with prepending zeroes.
+     * @param in Not fixed sized binary string
+     * @return Binary string with constant length of GRID_SIZE * GRID_SIZE
+     */
+    private String fixedLenBinStr(String in) {
+        String out = "";
+        int left = GRID_SIZE * GRID_SIZE - in.length();
+        
+        for(int i = 0; i < left; i++)
+            out += '0';
+        out += in;
+        
+        return out;
+    }
+    
+    /**
+     * Start new game. 'r' button triggers this.
+     */
     private void resetGame() {
         //reset generation count
         GENERATION = 0;
@@ -154,25 +187,11 @@ public class GameOfLife extends JFrame {
         System.out.println("New game with grid " + GRID_SIZE + "x" + GRID_SIZE);
     }
     
-    private boolean match() {
-        for(int i=0; i<GRID_SIZE; i++)
-            for(int j=0; j<GRID_SIZE; j++)
-                if(cells[i][j].alive != check[i][j].alive)
-                    return false;
-        
-        return true;
-    }
-    
-    private void resetArray() {
-        for (int y = 0; y < GRID_SIZE; y++) {
-            for (int x = 0; x < GRID_SIZE; x++) {
-                check[x][y].die();
-                grid.recountNeighbours(check, check[x][y], false);
-            }
-        }
-    }
-    
-    private void step(Cell[][] array) {
+    /**
+     * One generation forward in an array.
+     * @param array The array in which generation is incremented.
+     */
+    private void stepForward(Cell[][] array) {
         // calculate next generation
         for(int y=0; y<GRID_SIZE; y++) {
             for(int x=0; x<GRID_SIZE; x++) {
@@ -209,5 +228,54 @@ public class GameOfLife extends JFrame {
                 }                    
             }
         }
+    }
+    
+    private void stepBack() {
+        // store fixed length binary string here
+        String binStr = "";
+        int n = 0;
+
+        // generate every possible combination of the matrix in form of binary string
+        mainLoop: for(int i = 0; i <= Math.pow(2, GRID_SIZE*GRID_SIZE) - 1; i++) {
+            binStr = fixedLenBinStr(Integer.toBinaryString(i));
+            n = 0;
+
+            // go through the matrix and fill it with the binary string's values
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int x = 0; x < GRID_SIZE; x++) {
+
+                    // if current value of the cell differs from the char
+                    // in the string, replace it and recount neighbours
+                    if(check[x][y].alive != (binStr.charAt(n) == '1')) {
+                        if(binStr.charAt(n) == '1')
+                            check[x][y].live();
+                        else
+                            check[x][y].die();
+
+                        grid.recountNeighbours(check, check[x][y], check[x][y].alive);
+                    }
+                    n++;
+                }
+            }
+
+            // check next stepForward
+            stepForward(check);
+
+            // see if next stepForward matches our current stepForward to determine if this
+            // combination was our previous stepForward
+            for(int y=0; y<GRID_SIZE; y++)
+                for(int x=0; x<GRID_SIZE; x++)
+                    if(cells[x][y].alive != check[x][y].alive)
+                        continue mainLoop;
+
+            // we are here if we found a matching case
+            found(binStr);
+
+            System.out.println("generation " + (--GENERATION));
+            return;
+        }
+
+        // no previous stepForward can be found
+        errorMessage("No previous steps can be found.");
     }
 }
