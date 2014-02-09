@@ -14,5 +14,5 @@ down - shrink grid and start new game<br>
 right - next generation<br>
 left - go back one generation<br><br>
 
-left mouse click to add living cell
+left mouse click to add living cell<br>
 right mouse click - kill cell
