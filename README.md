@@ -5,7 +5,8 @@ UI and basic game seems to be working.<br><br>
 
 Milestone 2: done<br>
 Brute force reversing seems to be working on simple cases.<br>
-It is slow, but steady. Also, not worlds best/fastest implementation, merely a proof of concept.<br><br>
+It is slow, but steady. Also, not worlds best/fastest implementation, merely a proof of concept.<br>
+Header of JFrame shows "Calculating..." when the program is busy.<br><br>
 
 Navigate using arrow keys:<br>
 r - start new game with same grid<br>
