@@ -29,21 +29,27 @@ public class Cell extends JLabel {
         setBackground(new Color(105, 120, 105));
         setPreferredSize(new Dimension(CELL_SIZE, CELL_SIZE));
         
-        setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        setText(Short.toString(neighboursAlive));
+        //setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        //setText(Short.toString(neighboursAlive));
         
         this.x = x;
         this.y = y;
     }
     
-    public void live() {
-        setBackground(Color.blue);
+    public void live(boolean paint) {
+        // color the cell
+        if(paint)
+            setBackground(Color.blue);
+        
         alive = true;
         willBeAlive = false;
     }
     
-    public void die() {
-        setBackground(new Color(105, 120, 105));
+    public void die(boolean paint) {
+        // color the cell
+        if(paint)
+            setBackground(new Color(105, 120, 105));
+        
         alive = false;
         willBeAlive = false;
     }

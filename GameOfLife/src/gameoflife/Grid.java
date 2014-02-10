@@ -45,13 +45,13 @@ public class Grid extends JPanel {
                     public void mousePressed(MouseEvent e) {
                         if(e.getButton() == MouseEvent.BUTTON1) {
                             if(!cell.alive) {
-                                cell.live();
+                                cell.live(true);
                                 recountNeighbours(cells, cell, true);
                             }
                         }
                         else if(e.getButton() == MouseEvent.BUTTON3) {
                             if(cell.alive) {
-                                cell.die();
+                                cell.die(true);
                                 recountNeighbours(cells, cell, false);
                             }
                         }
@@ -97,9 +97,10 @@ public class Grid extends JPanel {
             }
         }
         
-        for(int i=0; i<GRID_SIZE; i++)
-            for(int j=0; j<GRID_SIZE; j++)
-                array[i][j].setText(Short.toString(array[i][j].neighboursAlive));
+        // show number of neighbours (debug only, slows down significantly)
+        //for(int i=0; i<GRID_SIZE; i++)
+        //    for(int j=0; j<GRID_SIZE; j++)
+        //        array[i][j].setText(Short.toString(array[i][j].neighboursAlive));
     }
     
     public boolean isEmpty() {

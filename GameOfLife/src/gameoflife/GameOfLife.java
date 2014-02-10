@@ -6,7 +6,9 @@
 
 package gameoflife;
 
+import java.awt.Color;
 import java.awt.event.ActionEvent;
+import java.awt.image.BufferedImage;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JFrame;
@@ -107,7 +109,7 @@ public class GameOfLife extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             System.out.println("generation " + (++GENERATION));
-            stepForward(cells);
+            stepForward(cells, true);
         }
     };
     
@@ -123,8 +125,12 @@ public class GameOfLife extends JFrame {
                 return;
             }
             
+            setTitle("Counting...");
+            
             // take a step back
             stepBack();
+            
+            setTitle("Game Of Life reversed");
         }
     };
     
@@ -145,31 +151,15 @@ public class GameOfLife extends JFrame {
             for (int x = 0; x < GRID_SIZE; x++) {
                 if(cells[x][y].alive != (binStr.charAt(m) == '1')) {
                     if(binStr.charAt(m) == '1')
-                        cells[x][y].live();
+                        cells[x][y].live(true);
                     else
-                        cells[x][y].die();
+                        cells[x][y].die(true);
 
                     grid.recountNeighbours(cells, cells[x][y], cells[x][y].alive);
                 }
                 m++;
             }
         }
-    }
-    
-    /**
-     * Creates and returns a fixed sized binary string with prepending zeroes.
-     * @param in Not fixed sized binary string
-     * @return Binary string with constant length of GRID_SIZE * GRID_SIZE
-     */
-    private String fixedLenBinStr(String in) {
-        String out = "";
-        int left = GRID_SIZE * GRID_SIZE - in.length();
-        
-        for(int i = 0; i < left; i++)
-            out += '0';
-        out += in;
-        
-        return out;
     }
     
     /**
@@ -191,7 +181,7 @@ public class GameOfLife extends JFrame {
      * One generation forward in an array.
      * @param array The array in which generation is incremented.
      */
-    private void stepForward(Cell[][] array) {
+    private void stepForward(Cell[][] array, boolean paintCells) {
         // calculate next generation
         for(int y=0; y<GRID_SIZE; y++) {
             for(int x=0; x<GRID_SIZE; x++) {
@@ -219,25 +209,32 @@ public class GameOfLife extends JFrame {
                 Cell currCell = array[i][j];
 
                 if(!currCell.alive && currCell.willBeAlive) {
-                    currCell.live();
+                    currCell.live(paintCells);
                     grid.recountNeighbours(array, currCell, true);
                 }
                 else if(currCell.alive && !currCell.willBeAlive) {
-                    currCell.die();
+                    currCell.die(paintCells);
                     grid.recountNeighbours(array, currCell, false);
                 }                    
             }
         }
+        
     }
     
     private void stepBack() {
         // store fixed length binary string here
-        String binStr = "";
-        int n = 0;
+        String binStr, tmp;
+        int n;
 
         // generate every possible combination of the matrix in form of binary string
         mainLoop: for(int i = 0; i <= Math.pow(2, GRID_SIZE*GRID_SIZE) - 1; i++) {
-            binStr = fixedLenBinStr(Integer.toBinaryString(i));
+            // make binary string of fixed length
+            tmp = Integer.toBinaryString(i);
+            binStr = "";
+            for(int j = 0; j < GRID_SIZE * GRID_SIZE - tmp.length(); j++)
+                binStr += '0';
+            binStr += tmp;
+            
             n = 0;
 
             // go through the matrix and fill it with the binary string's values
@@ -248,9 +245,9 @@ public class GameOfLife extends JFrame {
                     // in the string, replace it and recount neighbours
                     if(check[x][y].alive != (binStr.charAt(n) == '1')) {
                         if(binStr.charAt(n) == '1')
-                            check[x][y].live();
+                            check[x][y].live(false);
                         else
-                            check[x][y].die();
+                            check[x][y].die(false);
 
                         grid.recountNeighbours(check, check[x][y], check[x][y].alive);
                     }
@@ -259,7 +256,7 @@ public class GameOfLife extends JFrame {
             }
 
             // check next stepForward
-            stepForward(check);
+            stepForward(check, false);
 
             // see if next stepForward matches our current stepForward to determine if this
             // combination was our previous stepForward
