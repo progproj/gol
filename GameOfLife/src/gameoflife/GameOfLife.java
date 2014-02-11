@@ -7,12 +7,22 @@
 package gameoflife;
 
 import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
-import java.awt.image.BufferedImage;
+import java.awt.event.KeyAdapter;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseMotionAdapter;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.GroupLayout;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
 /**
@@ -26,6 +36,12 @@ public class GameOfLife extends JFrame {
     private final int GRID_MAX_SIZE = 20;
     private int GRID_SIZE = GRID_MIN_SIZE;
     private int GENERATION = 0;
+    
+    // grey out glass pane
+    JPanel glass = new JPanel(new GridBagLayout());
+    
+    // stop all calculating threads
+    public volatile boolean stop = true;
     
     public static void main(String[] args) {
         new GameOfLife();
@@ -43,6 +59,19 @@ public class GameOfLife extends JFrame {
         setSize(400, 400);
         setResizable(false);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        
+        // glass pane
+        // glass.setOpaque(true);
+        JLabel label = new JLabel("Calculating... Press r to reset game.");
+        glass.add(label);
+        label.setForeground(Color.red);
+        Color transparent = new Color(128, 128, 128, 200);
+        glass.setBackground(transparent);
+        
+        // trap mouse events.
+        glass.addMouseListener(new MouseAdapter() {});
+        
+        setGlassPane(glass);
         
         // initialize the grid to 3x3 in the beginning
         initGrid(GRID_MIN_SIZE);
@@ -67,11 +96,12 @@ public class GameOfLife extends JFrame {
     }
     
     /**
-     * Reset game with same grid size.
+     * Stop calculating threads if necessary and reset game with the same grid size.
      */
     Action reset = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
+            stop = true; // stop calculating threads
             resetGame();
         }
     };
@@ -81,10 +111,13 @@ public class GameOfLife extends JFrame {
      */
     Action grow = new AbstractAction() {
         @Override
-        public void actionPerformed(ActionEvent e) {            
-            if(GRID_SIZE < GRID_MAX_SIZE) {
-                GRID_SIZE++;
-                resetGame();
+        public void actionPerformed(ActionEvent e) {
+            // do something only if we stopped calculations
+            if(stop) {
+                if(GRID_SIZE < GRID_MAX_SIZE) {
+                    GRID_SIZE++;
+                    resetGame();
+                }
             }
         }
     };
@@ -95,9 +128,12 @@ public class GameOfLife extends JFrame {
     Action shrink = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            if(GRID_SIZE > GRID_MIN_SIZE) {
-                GRID_SIZE--;
-                resetGame();
+            // do something only if we stopped calculations
+            if(stop) {
+                if(GRID_SIZE > GRID_MIN_SIZE) {
+                    GRID_SIZE--;
+                    resetGame();
+                }
             }
         }
     };
@@ -108,8 +144,11 @@ public class GameOfLife extends JFrame {
     Action go = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            System.out.println("generation " + (++GENERATION));
-            stepForward(cells, true);
+            // do something only if we stopped calculations
+            if(stop) {
+                System.out.println("generation " + (++GENERATION));
+                stepForward(cells, true);
+            }
         }
     };
     
@@ -119,18 +158,31 @@ public class GameOfLife extends JFrame {
     Action back = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            // no way back from empty grid
-            if(grid.isEmpty()) {
-                errorMessage("Grid is empty! Returning!");
-                return;
+            // do something only if we stopped calculations
+            if(stop) {
+                glass.setVisible(true);
+                
+                // no way back from empty grid
+                if(grid.isEmpty()) {
+                    errorMessage("Grid is empty! Returning!");
+                    return;
+                }
+
+                setTitle("Calculating...");
+
+                // take a step back
+                new Thread() {
+                    @Override
+                    public void run() {
+                        stop = false;
+                        stepBack();
+                        glass.setVisible(false);
+                        setTitle("Game Of Life reversed");
+                    }
+                }.start();
+
+                //setTitle("Game Of Life reversed");
             }
-            
-            setTitle("Counting...");
-            
-            // take a step back
-            stepBack();
-            
-            setTitle("Game Of Life reversed");
         }
     };
     
@@ -224,10 +276,29 @@ public class GameOfLife extends JFrame {
     private void stepBack() {
         // store fixed length binary string here
         String binStr, tmp;
+        // counter
         int n;
+        // get available CPU cores, should be 8 on my i7
+        int processors = Runtime.getRuntime().availableProcessors();
+        // the number of permutations we will be processing in one separate thread
+        long permCount = (long) (Math.pow(2, GRID_SIZE*GRID_SIZE) - 1);
+        
+        // if(GRID_SIZE > 5) {
+            // permCount /= processors;
+            // 1. execute 'processors' different threads
+            // 2. stop all processing when some thread finds solution
+                // 2.1 global volatile boolean stop = true to stop and check for
+                // this flag in each thread
+        // }
+        // else
+            // use one separate thread
 
         // generate every possible combination of the matrix in form of binary string
-        mainLoop: for(int i = 0; i <= Math.pow(2, GRID_SIZE*GRID_SIZE) - 1; i++) {
+        mainLoop: for(int i = 0; i <= permCount; i++) {
+            // if game is reseted during calculations
+            if(stop)
+                return;
+            
             // make binary string of fixed length
             tmp = Integer.toBinaryString(i);
             binStr = "";
@@ -235,44 +306,47 @@ public class GameOfLife extends JFrame {
                 binStr += '0';
             binStr += tmp;
             
-            n = 0;
+            /**************** PARALLEL STUFF ******************************************/
+                    // go through the matrix and fill it with the binary string's values
+                    n = 0;
+                    for (int y = 0; y < GRID_SIZE; y++) {
+                        for (int x = 0; x < GRID_SIZE; x++) {
 
-            // go through the matrix and fill it with the binary string's values
-            for (int y = 0; y < GRID_SIZE; y++) {
-                for (int x = 0; x < GRID_SIZE; x++) {
+                            // if current value of the cell differs from the char
+                            // in the string, replace it and recount neighbours
+                            if(check[x][y].alive != (binStr.charAt(n) == '1')) {
+                                if(binStr.charAt(n) == '1')
+                                    check[x][y].live(false);
+                                else
+                                    check[x][y].die(false);
 
-                    // if current value of the cell differs from the char
-                    // in the string, replace it and recount neighbours
-                    if(check[x][y].alive != (binStr.charAt(n) == '1')) {
-                        if(binStr.charAt(n) == '1')
-                            check[x][y].live(false);
-                        else
-                            check[x][y].die(false);
-
-                        grid.recountNeighbours(check, check[x][y], check[x][y].alive);
+                                grid.recountNeighbours(check, check[x][y], check[x][y].alive);
+                            }
+                            n++;
+                        }
                     }
-                    n++;
-                }
-            }
 
-            // check next stepForward
-            stepForward(check, false);
+                    // check next stepForward
+                    stepForward(check, false);
 
-            // see if next stepForward matches our current stepForward to determine if this
-            // combination was our previous stepForward
-            for(int y=0; y<GRID_SIZE; y++)
-                for(int x=0; x<GRID_SIZE; x++)
-                    if(cells[x][y].alive != check[x][y].alive)
-                        continue mainLoop;
+                    // see if next stepForward matches our current stepForward to determine if this
+                    // combination was our previous stepForward
+                    for(int y=0; y<GRID_SIZE; y++)
+                        for(int x=0; x<GRID_SIZE; x++)
+                            if(cells[x][y].alive != check[x][y].alive)
+                                continue mainLoop;
+            /***************************************************************************/
 
             // we are here if we found a matching case
             found(binStr);
 
             System.out.println("generation " + (--GENERATION));
+            stop = true;
             return;
         }
 
         // no previous stepForward can be found
+        stop = true;
         errorMessage("No previous steps can be found.");
     }
 }
