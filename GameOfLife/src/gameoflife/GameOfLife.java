@@ -7,18 +7,16 @@
 package gameoflife;
 
 import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.Graphics;
 import java.awt.GridBagLayout;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.KeyAdapter;
 import java.awt.event.MouseAdapter;
-import java.awt.event.MouseMotionAdapter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.GroupLayout;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -31,17 +29,18 @@ import javax.swing.KeyStroke;
  */
 public class GameOfLife extends JFrame {
     Grid grid;
-    Cell[][] cells, check;
+    Cell[][] cells;
     private final int GRID_MIN_SIZE = 3;
     private final int GRID_MAX_SIZE = 20;
     private int GRID_SIZE = GRID_MIN_SIZE;
     private int GENERATION = 0;
+    private boolean found = false;
     
     // grey out glass pane
     JPanel glass = new JPanel(new GridBagLayout());
     
     // stop all calculating threads
-    public volatile boolean stop = true;
+    private volatile boolean stop = true;
     
     public static void main(String[] args) {
         new GameOfLife();
@@ -51,7 +50,6 @@ public class GameOfLife extends JFrame {
         grid = new Grid(size);
         add(grid);
         cells = grid.getCells();
-        check = grid.getCheck();
     }
     
     public GameOfLife() {
@@ -61,7 +59,6 @@ public class GameOfLife extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         
         // glass pane
-        // glass.setOpaque(true);
         JLabel label = new JLabel("Calculating... Press r to reset game.");
         glass.add(label);
         label.setForeground(Color.red);
@@ -160,8 +157,6 @@ public class GameOfLife extends JFrame {
         public void actionPerformed(ActionEvent e) {
             // do something only if we stopped calculations
             if(stop) {
-                glass.setVisible(true);
-                
                 // no way back from empty grid
                 if(grid.isEmpty()) {
                     errorMessage("Grid is empty! Returning!");
@@ -175,9 +170,20 @@ public class GameOfLife extends JFrame {
                     @Override
                     public void run() {
                         stop = false;
-                        stepBack();
+                        glass.setVisible(true);
+                        
+                        try {
+                            stepBack();
+                        } catch (InterruptedException ex) {
+                            System.out.println(ex.getMessage());
+                        }
+                        
                         glass.setVisible(false);
+                        stop = true;
                         setTitle("Game Of Life reversed");
+                        
+                        if(!found)
+                            errorMessage("No previous steps can be found.");
                     }
                 }.start();
 
@@ -273,34 +279,55 @@ public class GameOfLife extends JFrame {
         
     }
     
-    private void stepBack() {
-        // store fixed length binary string here
-        String binStr, tmp;
-        // counter
-        int n;
+    private void stepBack() throws InterruptedException {
         // get available CPU cores, should be 8 on my i7
         int processors = Runtime.getRuntime().availableProcessors();
         // the number of permutations we will be processing in one separate thread
         long permCount = (long) (Math.pow(2, GRID_SIZE*GRID_SIZE) - 1);
+        // nothing found yet
+        found = false;
         
-        // if(GRID_SIZE > 5) {
-            // permCount /= processors;
-            // 1. execute 'processors' different threads
-            // 2. stop all processing when some thread finds solution
-                // 2.1 global volatile boolean stop = true to stop and check for
-                // this flag in each thread
-        // }
-        // else
-            // use one separate thread
+        if(GRID_SIZE > 4) {
+            ExecutorService executor = Executors.newFixedThreadPool(processors);
+            long end = 0;
 
+            for(int t = 0; t < processors; t++) {
+                final long START = end;
+                end += (long)Math.ceil((double)permCount / (double)processors);
+                final long END = end;
+
+                executor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        count(START, END);
+                    }
+                });
+            }
+            
+            executor.shutdown();
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.MINUTES);
+        }
+        else {
+            count(0, permCount);
+        }
+    }
+    
+    private void count(long start, long end) {
+        // store fixed length binary string here
+        String binStr, tmp;
+        // counter
+        int n;
+        // testing grid
+        Cell[][] check = grid.getCheck();
+        
         // generate every possible combination of the matrix in form of binary string
-        mainLoop: for(int i = 0; i <= permCount; i++) {
+        mainLoop: for(long i = start; i <= end; i++) {
             // if game is reseted during calculations
             if(stop)
                 return;
             
             // make binary string of fixed length
-            tmp = Integer.toBinaryString(i);
+            tmp = Long.toBinaryString(i);
             binStr = "";
             for(int j = 0; j < GRID_SIZE * GRID_SIZE - tmp.length(); j++)
                 binStr += '0';
@@ -338,15 +365,12 @@ public class GameOfLife extends JFrame {
             /***************************************************************************/
 
             // we are here if we found a matching case
+            stop = true;
             found(binStr);
+            found = true;
 
             System.out.println("generation " + (--GENERATION));
-            stop = true;
             return;
         }
-
-        // no previous stepForward can be found
-        stop = true;
-        errorMessage("No previous steps can be found.");
     }
 }
