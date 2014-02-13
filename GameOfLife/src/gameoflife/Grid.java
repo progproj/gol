@@ -16,7 +16,7 @@ import javax.swing.JPanel;
  * @author darth
  */
 public class Grid extends JPanel {
-    private Cell[][] cells, check;
+    private Cell[][] cells;
     private final int GRID_SIZE;
     
     public Cell[][] getCells() {
@@ -24,20 +24,24 @@ public class Grid extends JPanel {
     }
     
     public Cell[][] getCheck() {
+        Cell[][] check = new Cell[GRID_SIZE][GRID_SIZE];
+        
+        for (int y = 0; y < GRID_SIZE; y++)
+            for (int x = 0; x < GRID_SIZE; x++)
+                check[x][y] = new Cell(x, y);
+                
         return check;
     }
 
     public Grid(int GRID_SIZE) {
         this.GRID_SIZE = GRID_SIZE;
         cells = new Cell[GRID_SIZE][GRID_SIZE];
-        check = new Cell[GRID_SIZE][GRID_SIZE];
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
 
         for (int y = 0; y < GRID_SIZE; y++) {
             for (int x = 0; x < GRID_SIZE; x++) {
                 final Cell cell = new Cell(x, y);
                 cells[x][y] = cell;
-                check[x][y] = new Cell(x, y);
                 add(cell);
                 
                 cell.addMouseListener(new MouseListener() {
